@@ -1,22 +1,26 @@
 import type { MetricsTree, NodeMetrics, Filters } from "./types";
+import { displayHierarchyName } from "./hierarchyLabels";
 
 /** Picks the most specific node's metrics for the current platform/module/sub_module
  * filter — the tree already has every level pre-computed, so no extra API call needed. */
 export function selectNodeMetrics(tree: MetricsTree, filters: Filters): { label: string; metrics: NodeMetrics } {
   if (filters.platform) {
     const p = tree.platforms[filters.platform];
+    const platformLabel = displayHierarchyName(filters.platform);
     if (!p) return { label: "Overall", metrics: tree.metrics };
     if (filters.module) {
       const m = p.modules[filters.module];
-      if (!m) return { label: filters.platform, metrics: p.metrics };
+      const moduleLabel = displayHierarchyName(filters.module);
+      if (!m) return { label: platformLabel, metrics: p.metrics };
       if (filters.sub_module) {
         const s = m.sub_modules[filters.sub_module];
-        if (!s) return { label: `${filters.platform} › ${filters.module}`, metrics: m.metrics };
-        return { label: `${filters.platform} › ${filters.module} › ${filters.sub_module}`, metrics: s.metrics };
+        const subLabel = displayHierarchyName(filters.sub_module);
+        if (!s) return { label: `${platformLabel} › ${moduleLabel}`, metrics: m.metrics };
+        return { label: `${platformLabel} › ${moduleLabel} › ${subLabel}`, metrics: s.metrics };
       }
-      return { label: `${filters.platform} › ${filters.module}`, metrics: m.metrics };
+      return { label: `${platformLabel} › ${moduleLabel}`, metrics: m.metrics };
     }
-    return { label: filters.platform, metrics: p.metrics };
+    return { label: platformLabel, metrics: p.metrics };
   }
   return { label: "Overall", metrics: tree.metrics };
 }
@@ -35,4 +39,3 @@ export function trendParamsFromFilters(filters: Filters) {
   }
   return { level: "overall" };
 }
-

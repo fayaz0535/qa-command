@@ -9,6 +9,7 @@ import ExportButton from "@/components/ExportButton";
 import ErrorState from "@/components/ErrorState";
 import { useFilters } from "@/lib/FilterContext";
 import { fetchMetrics } from "@/lib/api";
+import { displayHierarchyName } from "@/lib/hierarchyLabels";
 import type { MetricsTree, NodeMetrics, ModuleNode, SubModuleNode } from "@/lib/types";
 
 function MetricRow({ metrics }: { metrics: NodeMetrics }) {
@@ -28,34 +29,48 @@ function MetricRow({ metrics }: { metrics: NodeMetrics }) {
   );
 }
 
+function NoBreakdownNote({ text }: { text: string }) {
+  return (
+    <div className="py-2.5 pl-14 pr-4 text-xs text-gray-400 italic border-b border-black/[0.04] last:border-0">
+      {text}
+    </div>
+  );
+}
+
 function SubModuleRow({ name, node }: { name: string; node: SubModuleNode }) {
   return (
     <div className="flex items-center justify-between py-2.5 pl-14 pr-4 border-b border-black/[0.04] last:border-0">
-      <span className="text-sm text-gray-600">{name}</span>
+      <span className="text-sm text-gray-600">{displayHierarchyName(name)}</span>
       <MetricRow metrics={node.metrics} />
     </div>
   );
 }
 
 function ModuleRow({
-  platformName, name, node, expanded, onToggle,
+  name, node, expanded, onToggle,
 }: {
-  platformName: string; name: string; node: ModuleNode; expanded: boolean; onToggle: () => void;
+  name: string; node: ModuleNode; expanded: boolean; onToggle: () => void;
 }) {
   const subEntries = Object.entries(node.sub_modules);
+  const hasSubModules = subEntries.length > 0;
+
   return (
     <div className="border-b border-black/[0.04] last:border-0">
       <button
         onClick={onToggle}
-        className="w-full flex items-center justify-between py-3 pl-8 pr-4 hover:bg-gray-50 text-left"
+        disabled={!hasSubModules}
+        className={`w-full flex items-center justify-between py-3 pl-8 pr-4 text-left ${
+          hasSubModules ? "hover:bg-gray-50" : "cursor-default"
+        }`}
       >
         <span className="flex items-center gap-1.5 text-sm font-medium text-gray-700">
-          {subEntries.length > 0 && (expanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />)}
-          {name}
+          {hasSubModules && (expanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />)}
+          {displayHierarchyName(name)}
         </span>
         <MetricRow metrics={node.metrics} />
       </button>
-      {expanded && subEntries.map(([subName, subNode]) => (
+      {!hasSubModules && <NoBreakdownNote text="No sub-module breakdown — defects tracked at module level." />}
+      {hasSubModules && expanded && subEntries.map(([subName, subNode]) => (
         <SubModuleRow key={subName} name={subName} node={subNode} />
       ))}
     </div>
@@ -97,6 +112,9 @@ export default function DeliveryPage() {
     });
   };
 
+  // tree.platforms may legitimately be {} for a brand-new empty install, but every
+  // key it DOES have must render — a platform with no module breakdown is still a
+  // real platform with real metrics, not something to filter out.
   const platformEntries = tree
     ? Object.entries(tree.platforms).filter(([name]) => !filters.platform || name === filters.platform)
     : [];
@@ -124,25 +142,32 @@ export default function DeliveryPage() {
           <div className="bg-white border border-black/[0.08] rounded-xl shadow-sm overflow-hidden">
             {platformEntries.map(([platformName, platformNode]) => {
               const isExpanded = expandedPlatforms.has(platformName) || filters.platform === platformName;
-              const moduleEntries = Object.entries(platformNode.modules);
+              const moduleEntries = Object.entries(platformNode.modules || {});
+              const hasModules = moduleEntries.length > 0;
+
               return (
                 <div key={platformName} className="border-b border-black/[0.06] last:border-0">
                   <button
                     onClick={() => togglePlatform(platformName)}
-                    className="w-full flex items-center justify-between py-4 px-4 hover:bg-gray-50 text-left"
+                    disabled={!hasModules}
+                    className={`w-full flex items-center justify-between py-4 px-4 text-left ${
+                      hasModules ? "hover:bg-gray-50" : "cursor-default"
+                    }`}
                   >
                     <span className="flex items-center gap-2 text-sm font-semibold text-[#0D1117]">
-                      {moduleEntries.length > 0 && (isExpanded ? <ChevronDown size={16} /> : <ChevronRight size={16} />)}
-                      {platformName}
+                      {hasModules && (isExpanded ? <ChevronDown size={16} /> : <ChevronRight size={16} />)}
+                      {displayHierarchyName(platformName)}
                     </span>
                     <MetricRow metrics={platformNode.metrics} />
                   </button>
-                  {isExpanded && moduleEntries.map(([moduleName, moduleNode]) => {
+                  {!hasModules && (
+                    <NoBreakdownNote text="No module breakdown — defects tracked at platform level." />
+                  )}
+                  {hasModules && isExpanded && moduleEntries.map(([moduleName, moduleNode]) => {
                     const key = `${platformName}::${moduleName}`;
                     return (
                       <ModuleRow
                         key={key}
-                        platformName={platformName}
                         name={moduleName}
                         node={moduleNode}
                         expanded={expandedModules.has(key) ||

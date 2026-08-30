@@ -7,6 +7,7 @@ import ExportButton from "@/components/ExportButton";
 import ErrorState from "@/components/ErrorState";
 import { useFilters } from "@/lib/FilterContext";
 import { fetchDefects } from "@/lib/api";
+import { displayHierarchyName } from "@/lib/hierarchyLabels";
 import type { Defect } from "@/lib/types";
 
 const SEVERITY_BADGE: Record<string, string> = {
@@ -106,7 +107,7 @@ export default function OwnersPage() {
                             {d.title}
                           </td>
                           <td className="px-4 py-2.5 text-gray-500 text-xs">
-                            {[d.platform, d.module, d.sub_module].filter(Boolean).join(" › ")}
+                            {[d.platform, d.module, d.sub_module].filter(Boolean).map(displayHierarchyName).join(" › ")}
                           </td>
                           <td className="px-4 py-2.5">
                             <span className={`text-xs px-2 py-0.5 rounded-full border ${SEVERITY_BADGE[d.severity]}`}>

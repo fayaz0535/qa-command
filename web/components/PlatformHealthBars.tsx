@@ -1,6 +1,7 @@
 import Link from "next/link";
 import RagBadge from "./RagBadge";
 import ProgressBar from "./ProgressBar";
+import { displayHierarchyName } from "@/lib/hierarchyLabels";
 import type { PlatformNode } from "@/lib/types";
 
 export default function PlatformHealthBars({ platforms }: { platforms: Record<string, PlatformNode> }) {
@@ -19,7 +20,7 @@ export default function PlatformHealthBars({ platforms }: { platforms: Record<st
           className="flex items-center gap-4 group"
         >
           <span className="w-32 text-sm text-gray-700 shrink-0 group-hover:text-qc-primary truncate">
-            {name}
+            {displayHierarchyName(name)}
           </span>
           <div className="flex-1">
             <ProgressBar pct={p.metrics.execution_pct} health={p.metrics.health} />

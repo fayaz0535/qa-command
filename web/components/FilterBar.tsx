@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { X } from "lucide-react";
 import { useFilters } from "@/lib/FilterContext";
 import { fetchHierarchy, fetchOwners } from "@/lib/api";
+import { displayHierarchyName } from "@/lib/hierarchyLabels";
 import type { HierarchyTree } from "@/lib/types";
 
 const SEVERITIES = ["Critical", "High", "Medium", "Low", "TBC"];
@@ -23,7 +24,7 @@ function Select({
     >
       <option value="">{label}</option>
       {options.map((o) => (
-        <option key={o} value={o}>{o}</option>
+        <option key={o} value={o}>{displayHierarchyName(o)}</option>
       ))}
     </select>
   );
