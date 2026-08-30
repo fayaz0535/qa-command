@@ -6,6 +6,7 @@ import FilterBar from "@/components/FilterBar";
 import RagBadge from "@/components/RagBadge";
 import ProgressBar from "@/components/ProgressBar";
 import ExportButton from "@/components/ExportButton";
+import ErrorState from "@/components/ErrorState";
 import { useFilters } from "@/lib/FilterContext";
 import { fetchMetrics } from "@/lib/api";
 import type { MetricsTree, NodeMetrics, ModuleNode, SubModuleNode } from "@/lib/types";
@@ -65,13 +66,20 @@ export default function DeliveryPage() {
   const { filters } = useFilters();
   const [tree, setTree] = useState<MetricsTree | null>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [expandedPlatforms, setExpandedPlatforms] = useState<Set<string>>(new Set());
   const [expandedModules, setExpandedModules] = useState<Set<string>>(new Set());
 
-  useEffect(() => {
+  const loadMetrics = () => {
     setLoading(true);
-    fetchMetrics(filters.owner).then(setTree).catch(() => setTree(null)).finally(() => setLoading(false));
-  }, [filters.owner]);
+    setError(null);
+    fetchMetrics(filters.owner)
+      .then(setTree)
+      .catch((e) => setError(e.message || "Failed to load metrics"))
+      .finally(() => setLoading(false));
+  };
+
+  useEffect(loadMetrics, [filters.owner]);
 
   const togglePlatform = (name: string) => {
     setExpandedPlatforms((prev) => {
@@ -106,7 +114,9 @@ export default function DeliveryPage() {
         </div>
         <p className="text-xs text-gray-400">Platform › Module › Sub-module — click a row to expand.</p>
 
-        {loading || !tree ? (
+        {error ? (
+          <ErrorState message={error} onRetry={loadMetrics} />
+        ) : loading || !tree ? (
           <div className="text-sm text-gray-400">Loading metrics…</div>
         ) : platformEntries.length === 0 ? (
           <div className="text-sm text-gray-400">No platforms match the current filters.</div>

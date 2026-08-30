@@ -25,12 +25,16 @@ services:
     build:
       context: ./web
       dockerfile: Dockerfile
+      # NEXT_PUBLIC_* vars are baked into the client bundle at build time, not
+      # read at container runtime — must be passed as a build arg, not just env.
+      args:
+        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL}
     container_name: qacommand_web
     restart: always
     ports:
       - "3004:3000"
     environment:
-      - NEXT_PUBLIC_API_URL=https://qa.zaimahtech.ae/api
+      - NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL}
     depends_on:
       - api
     networks:

@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { AlertTriangle } from "lucide-react";
 import FilterBar from "@/components/FilterBar";
 import ExportButton from "@/components/ExportButton";
+import ErrorState from "@/components/ErrorState";
 import { useFilters } from "@/lib/FilterContext";
 import { fetchDefects } from "@/lib/api";
 import type { Defect } from "@/lib/types";
@@ -29,15 +30,19 @@ export default function OwnersPage() {
   const { filters } = useFilters();
   const [defects, setDefects] = useState<Defect[]>([]);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    if (!filters.owner) { setDefects([]); return; }
+  const loadDefects = () => {
+    if (!filters.owner) { setDefects([]); setError(null); return; }
     setLoading(true);
+    setError(null);
     fetchDefects({ owner: filters.owner, severity: filters.severity })
       .then((r) => setDefects(r.defects))
-      .catch(() => setDefects([]))
+      .catch((e) => setError(e.message || "Failed to load defects"))
       .finally(() => setLoading(false));
-  }, [filters.owner, filters.severity]);
+  };
+
+  useEffect(loadDefects, [filters.owner, filters.severity]);
 
   const summary = useMemo(() => {
     const open = defects.filter((d) => !["Closed", "Deferred", "Rejected"].includes(d.state));
@@ -62,6 +67,8 @@ export default function OwnersPage() {
           <div className="text-sm text-gray-400 bg-white border border-black/[0.08] rounded-xl p-6">
             Select an owner from the filter bar above to see their defects, aging, and ETAs.
           </div>
+        ) : error ? (
+          <ErrorState message={error} onRetry={loadDefects} />
         ) : (
           <>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">

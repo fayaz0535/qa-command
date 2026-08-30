@@ -8,12 +8,14 @@ import type { Insight } from "@/lib/types";
 export default function InsightsPanel() {
   const [insight, setInsight] = useState<Insight | null>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   const load = (force = false) => {
     setLoading(true);
+    setError(null);
     fetchInsights(force)
       .then(setInsight)
-      .catch(() => setInsight(null))
+      .catch((e) => setError(e.message || "Failed to load insights"))
       .finally(() => setLoading(false));
   };
 
@@ -38,7 +40,9 @@ export default function InsightsPanel() {
         </button>
       </div>
 
-      {loading && !insight ? (
+      {error ? (
+        <div className="text-sm text-red-500">Couldn't load insights: {error}</div>
+      ) : loading && !insight ? (
         <div className="text-sm text-gray-400">Generating today's insight…</div>
       ) : (
         <div className="space-y-3">

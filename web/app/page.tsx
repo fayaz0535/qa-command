@@ -9,6 +9,7 @@ import PlatformHealthBars from "@/components/PlatformHealthBars";
 import OwnerBars from "@/components/OwnerBars";
 import InsightsPanel from "@/components/InsightsPanel";
 import ExportButton from "@/components/ExportButton";
+import ErrorState from "@/components/ErrorState";
 import { useFilters } from "@/lib/FilterContext";
 import { fetchMetrics, fetchTrend } from "@/lib/api";
 import { selectNodeMetrics, trendParamsFromFilters } from "@/lib/selectNode";
@@ -29,11 +30,18 @@ export default function ExecutivePage() {
   const [tree, setTree] = useState<MetricsTree | null>(null);
   const [trend, setTrend] = useState<TrendPoint[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
+  const loadMetrics = () => {
     setLoading(true);
-    fetchMetrics(filters.owner).then(setTree).catch(() => setTree(null)).finally(() => setLoading(false));
-  }, [filters.owner]);
+    setError(null);
+    fetchMetrics(filters.owner)
+      .then(setTree)
+      .catch((e) => setError(e.message || "Failed to load metrics"))
+      .finally(() => setLoading(false));
+  };
+
+  useEffect(loadMetrics, [filters.owner]);
 
   useEffect(() => {
     fetchTrend({ ...trendParamsFromFilters(filters), days: 30 })
@@ -53,7 +61,9 @@ export default function ExecutivePage() {
           </div>
         </div>
 
-        {loading || !tree ? (
+        {error ? (
+          <ErrorState message={error} onRetry={loadMetrics} />
+        ) : loading || !tree ? (
           <div className="text-sm text-gray-400">Loading metrics…</div>
         ) : (
           <>
