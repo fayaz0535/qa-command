@@ -1,7 +1,7 @@
 #!/bin/bash
 set -e
 
-APP_DIR="/home/qacommand/app"
+APP_DIR="/home/qa-command"
 BRANCH="main"
 
 echo ""
