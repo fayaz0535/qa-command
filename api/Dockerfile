@@ -16,8 +16,8 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 COPY . .
 
-RUN mkdir -p /app/uploads
+RUN mkdir -p /app/uploads && chmod +x /app/entrypoint.sh
 
 EXPOSE 5000
 
-CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "5000", "--reload"]
+ENTRYPOINT ["/app/entrypoint.sh"]

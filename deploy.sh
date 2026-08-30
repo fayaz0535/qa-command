@@ -13,34 +13,28 @@ echo ""
 
 cd $APP_DIR
 
-echo "▶ [1/6] Pulling latest from origin/$BRANCH..."
+echo "▶ [1/4] Pulling latest from origin/$BRANCH..."
 git fetch origin
 git checkout $BRANCH
 git pull origin $BRANCH
 echo "   ✓ Code updated"
 
-echo "▶ [2/6] Checking environment..."
+echo "▶ [2/4] Checking environment..."
 if [ ! -f "$APP_DIR/.env" ]; then
   echo "   ✗ ERROR: .env file not found at $APP_DIR/.env"
   exit 1
 fi
 echo "   ✓ .env found"
 
-echo "▶ [3/6] Building services (no cache)..."
+echo "▶ [3/4] Building services (no cache)..."
 docker compose build --no-cache api web
 echo "   ✓ Build complete"
 
-echo "▶ [4/6] Running Alembic migrations..."
-docker stop qacommand_api qacommand_web qacommand_db 2>/dev/null || true
-docker rm qacommand_api qacommand_web qacommand_db 2>/dev/null || true
-docker compose run --rm api alembic upgrade head
-echo "   ✓ Migrations applied"
-
-echo "▶ [5/6] Restarting services..."
+echo "▶ [4/4] Restarting services (api's entrypoint runs 'alembic upgrade head' before uvicorn starts)..."
 docker compose up -d --force-recreate api web
 echo "   ✓ Services restarted"
 
-echo "▶ [6/6] Waiting for services to stabilise..."
+echo "Waiting for services to stabilise..."
 sleep 8
 
 echo ""

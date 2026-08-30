@@ -7,6 +7,7 @@ Create Date: 2026-08-30
 """
 from alembic import op
 import sqlalchemy as sa
+from sqlalchemy import inspect
 from sqlalchemy.dialects import postgresql
 
 # revision identifiers, used by Alembic.
@@ -16,8 +17,17 @@ branch_labels = None
 depends_on = None
 
 
+def _create_table_if_missing(inspector, name, *columns_and_constraints):
+    """Safety net alongside removing the app's own create_all() call — lets
+    `alembic upgrade head` run cleanly even if a table already exists (e.g. a
+    stale DB from before that call was removed) instead of erroring out."""
+    if name not in inspector.get_table_names():
+        op.create_table(name, *columns_and_constraints)
+
+
 def upgrade() -> None:
     bind = op.get_bind()
+    inspector = inspect(bind)
 
     defect_source_enum = postgresql.ENUM("CSV", "ADO", "JIRA", name="defectsource")
     defect_source_enum.create(bind, checkfirst=True)
@@ -34,8 +44,8 @@ def upgrade() -> None:
     hierarchy_level_enum = postgresql.ENUM("overall", "platform", "module", "sub_module", name="hierarchylevel")
     hierarchy_level_enum.create(bind, checkfirst=True)
 
-    op.create_table(
-        "platforms",
+    _create_table_if_missing(
+        inspector, "platforms",
         sa.Column("id", postgresql.UUID(as_uuid=True), primary_key=True),
         sa.Column("created_at", sa.DateTime(), nullable=False),
         sa.Column("updated_at", sa.DateTime(), nullable=False),
@@ -43,8 +53,8 @@ def upgrade() -> None:
         sa.UniqueConstraint("name", name="uq_platform_name"),
     )
 
-    op.create_table(
-        "modules",
+    _create_table_if_missing(
+        inspector, "modules",
         sa.Column("id", postgresql.UUID(as_uuid=True), primary_key=True),
         sa.Column("created_at", sa.DateTime(), nullable=False),
         sa.Column("updated_at", sa.DateTime(), nullable=False),
@@ -53,8 +63,8 @@ def upgrade() -> None:
         sa.UniqueConstraint("platform_id", "name", name="uq_module_platform_name"),
     )
 
-    op.create_table(
-        "sub_modules",
+    _create_table_if_missing(
+        inspector, "sub_modules",
         sa.Column("id", postgresql.UUID(as_uuid=True), primary_key=True),
         sa.Column("created_at", sa.DateTime(), nullable=False),
         sa.Column("updated_at", sa.DateTime(), nullable=False),
@@ -63,8 +73,8 @@ def upgrade() -> None:
         sa.UniqueConstraint("module_id", "name", name="uq_submodule_module_name"),
     )
 
-    op.create_table(
-        "vendors",
+    _create_table_if_missing(
+        inspector, "vendors",
         sa.Column("id", postgresql.UUID(as_uuid=True), primary_key=True),
         sa.Column("created_at", sa.DateTime(), nullable=False),
         sa.Column("updated_at", sa.DateTime(), nullable=False),
@@ -73,8 +83,8 @@ def upgrade() -> None:
         sa.UniqueConstraint("domain", name="uq_vendor_domain"),
     )
 
-    op.create_table(
-        "defects",
+    _create_table_if_missing(
+        inspector, "defects",
         sa.Column("id", postgresql.UUID(as_uuid=True), primary_key=True),
         sa.Column("created_at", sa.DateTime(), nullable=False),
         sa.Column("updated_at", sa.DateTime(), nullable=False),
@@ -99,8 +109,8 @@ def upgrade() -> None:
         sa.UniqueConstraint("source", "external_id", name="uq_defect_source_external_id"),
     )
 
-    op.create_table(
-        "test_cases",
+    _create_table_if_missing(
+        inspector, "test_cases",
         sa.Column("id", postgresql.UUID(as_uuid=True), primary_key=True),
         sa.Column("created_at", sa.DateTime(), nullable=False),
         sa.Column("updated_at", sa.DateTime(), nullable=False),
@@ -119,8 +129,8 @@ def upgrade() -> None:
         sa.UniqueConstraint("source", "external_id", name="uq_testcase_source_external_id"),
     )
 
-    op.create_table(
-        "metric_snapshots",
+    _create_table_if_missing(
+        inspector, "metric_snapshots",
         sa.Column("id", postgresql.UUID(as_uuid=True), primary_key=True),
         sa.Column("created_at", sa.DateTime(), nullable=False),
         sa.Column("updated_at", sa.DateTime(), nullable=False),
@@ -147,8 +157,8 @@ def upgrade() -> None:
                              name="uq_snapshot_date_node"),
     )
 
-    op.create_table(
-        "send_configs",
+    _create_table_if_missing(
+        inspector, "send_configs",
         sa.Column("id", postgresql.UUID(as_uuid=True), primary_key=True),
         sa.Column("created_at", sa.DateTime(), nullable=False),
         sa.Column("updated_at", sa.DateTime(), nullable=False),
@@ -161,16 +171,15 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
-    op.drop_table("send_configs")
-    op.drop_table("metric_snapshots")
-    op.drop_table("test_cases")
-    op.drop_table("defects")
-    op.drop_table("vendors")
-    op.drop_table("sub_modules")
-    op.drop_table("modules")
-    op.drop_table("platforms")
-
     bind = op.get_bind()
+    inspector = inspect(bind)
+    existing = set(inspector.get_table_names())
+
+    for table in ("send_configs", "metric_snapshots", "test_cases", "defects",
+                  "vendors", "sub_modules", "modules", "platforms"):
+        if table in existing:
+            op.drop_table(table)
+
     postgresql.ENUM(name="hierarchylevel").drop(bind, checkfirst=True)
     postgresql.ENUM(name="testphase").drop(bind, checkfirst=True)
     postgresql.ENUM(name="teststatus").drop(bind, checkfirst=True)

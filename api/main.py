@@ -3,8 +3,7 @@ from datetime import datetime
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from database import engine, Base
-import models  # noqa: F401 — import so Base.metadata sees every table
+import models  # noqa: F401 — imported so every model class is registered on the ORM mapper
 
 app = FastAPI(
     title="QA Command API",
@@ -37,12 +36,6 @@ app.include_router(metrics_router)
 app.include_router(insights_router)
 app.include_router(email_router)
 app.include_router(export_router)
-
-
-@app.on_event("startup")
-async def startup():
-    async with engine.begin() as conn:
-        await conn.run_sync(Base.metadata.create_all)
 
 
 @app.get("/health")
