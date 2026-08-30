@@ -27,6 +27,7 @@ from routers.metrics import router as metrics_router
 from routers.insights import router as insights_router
 from routers.email import router as email_router
 from routers.export import router as export_router
+from routers.ado import router as ado_router
 
 app.include_router(upload_router)
 app.include_router(defects_router)
@@ -36,6 +37,7 @@ app.include_router(metrics_router)
 app.include_router(insights_router)
 app.include_router(email_router)
 app.include_router(export_router)
+app.include_router(ado_router)
 
 
 @app.get("/health")

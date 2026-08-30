@@ -24,6 +24,13 @@ class DefectRecord:
     raised_date: date | None = None
     eta: date | None = None
     remark: str | None = None   # a single new remark line to append, if any
+    raw_area_path: str | None = None  # ADO's System.AreaPath, unresolved — the CSV
+                                       # adapter leaves this None since it already
+                                       # produces platform/module/sub_module directly.
+                                       # Sources that only have a single hierarchy
+                                       # string (like ADO) populate this instead, and
+                                       # the sync orchestrator resolves it via
+                                       # services/areapath_mapper.py before ingest.
 
 
 @dataclass
@@ -47,12 +54,17 @@ class SourceConfig:
 
 
 class SourceAdapter(ABC):
-    """Abstract base every defect/test source must implement."""
+    """Abstract base every defect/test source must implement.
+
+    Async because a real source (ADO, Jira) does network I/O — CSV's implementation
+    is a plain `async def` with no `await` inside, which is fine, it just means
+    the interface doesn't change shape depending on which source is behind it.
+    """
 
     @abstractmethod
-    def fetch_defects(self, config: SourceConfig) -> list[DefectRecord]:
+    async def fetch_defects(self, config: SourceConfig) -> list[DefectRecord]:
         ...
 
     @abstractmethod
-    def fetch_tests(self, config: SourceConfig) -> list[TestRecord]:
+    async def fetch_tests(self, config: SourceConfig) -> list[TestRecord]:
         ...

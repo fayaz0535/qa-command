@@ -39,8 +39,8 @@ from adapters.base import SourceAdapter, SourceConfig, DefectRecord, TestRecord
 
 
 class JiraAdapter(SourceAdapter):
-    def fetch_defects(self, config: SourceConfig) -> list[DefectRecord]:
+    async def fetch_defects(self, config: SourceConfig) -> list[DefectRecord]:
         raise NotImplementedError("Jira adapter is a Phase 2 stub — see module docstring for the intended calls.")
 
-    def fetch_tests(self, config: SourceConfig) -> list[TestRecord]:
+    async def fetch_tests(self, config: SourceConfig) -> list[TestRecord]:
         raise NotImplementedError("Jira adapter is a Phase 2 stub — see module docstring for the intended calls.")

@@ -33,3 +33,12 @@ VENDOR_DOMAIN_MAP = {
     "accenture.cn": "Accenture",
     "maveric-systems.com": "Maveric",
 }
+
+# ── ADO (Phase 2) ────────────────────────────────────────────────────────────
+ADO_ENCRYPTION_KEY = os.environ.get("ADO_ENCRYPTION_KEY", "")
+
+DEFAULT_ADO_WIQL = (
+    "SELECT [System.Id] FROM WorkItems "
+    "WHERE [System.WorkItemType] = 'Bug' AND [System.TeamProject] = @project "
+    "ORDER BY [System.ChangedDate] DESC"
+)

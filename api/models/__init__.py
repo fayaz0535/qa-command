@@ -5,3 +5,5 @@ from models.defect import Defect, DefectSource, DefectSeverity  # noqa: F401
 from models.test_case import TestCase, TestStatus, TestPhase  # noqa: F401
 from models.metric_snapshot import MetricSnapshot, HierarchyLevel  # noqa: F401
 from models.send_config import SendConfig  # noqa: F401
+from models.ado_connection import ADOConnection  # noqa: F401
+from models.areapath_mapping import AreaPathMapping, AreaPathMappingRule  # noqa: F401

@@ -46,10 +46,10 @@ async def upload_file(
 
     try:
         if record_type == "defects":
-            records = adapter.fetch_defects(config)
+            records = await adapter.fetch_defects(config)
             result = await ingest_defects(db, records)
         else:
-            records = adapter.fetch_tests(config)
+            records = await adapter.fetch_tests(config)
             result = await ingest_tests(db, records)
     except ColumnMappingRequired as exc:
         return {
@@ -86,10 +86,10 @@ async def complete_mapping(body: CompleteMappingRequest, db: AsyncSession = Depe
     })
 
     if body.record_type == "defects":
-        records = adapter.fetch_defects(config)
+        records = await adapter.fetch_defects(config)
         result = await ingest_defects(db, records)
     else:
-        records = adapter.fetch_tests(config)
+        records = await adapter.fetch_tests(config)
         result = await ingest_tests(db, records)
 
     await write_daily_snapshot(db)

@@ -151,7 +151,7 @@ class CSVAdapter(SourceAdapter):
         missing_hierarchy = [f for f in HIERARCHY_FIELDS if not detected.get(f)]
         return {"detected": detected, "missing_hierarchy": missing_hierarchy, "columns": list(df.columns)}
 
-    def fetch_defects(self, config: SourceConfig) -> list[DefectRecord]:
+    async def fetch_defects(self, config: SourceConfig) -> list[DefectRecord]:
         file_path = config.extra["file_path"]
         override = config.extra.get("column_map") or {}
         df = _read_table(file_path)
@@ -191,7 +191,7 @@ class CSVAdapter(SourceAdapter):
             ))
         return records
 
-    def fetch_tests(self, config: SourceConfig) -> list[TestRecord]:
+    async def fetch_tests(self, config: SourceConfig) -> list[TestRecord]:
         file_path = config.extra["file_path"]
         override = config.extra.get("column_map") or {}
         df = _read_table(file_path)
