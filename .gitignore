@@ -1,0 +1,22 @@
+# env
+.env
+
+# python
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# node
+node_modules/
+.next/
+next-env.d.ts
+tsconfig.tsbuildinfo
+
+# uploads / output
+uploads/
+output/
+
+# misc
+.DS_Store
+*.log

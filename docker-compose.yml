@@ -1,0 +1,63 @@
+name: qacommand
+
+services:
+  api:
+    build:
+      context: ./api
+      dockerfile: Dockerfile
+    container_name: qacommand_api
+    restart: always
+    ports:
+      - "5001:5000"
+    env_file: .env
+    environment:
+      - PYTHONUNBUFFERED=1
+    depends_on:
+      db:
+        condition: service_healthy
+    volumes:
+      - ./api:/app
+      - qacommand_uploads:/app/uploads
+    networks:
+      - qacommand_net
+
+  web:
+    build:
+      context: ./web
+      dockerfile: Dockerfile
+    container_name: qacommand_web
+    restart: always
+    ports:
+      - "3004:3000"
+    environment:
+      - NEXT_PUBLIC_API_URL=https://qa.zaimahtech.ae/api
+    depends_on:
+      - api
+    networks:
+      - qacommand_net
+
+  db:
+    image: postgres:16-alpine
+    container_name: qacommand_db
+    restart: always
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-qacommand}
+      POSTGRES_USER: ${POSTGRES_USER:-qacommand}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - qacommand_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-qacommand}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - qacommand_net
+
+volumes:
+  qacommand_pgdata:
+  qacommand_uploads:
+
+networks:
+  qacommand_net:
+    driver: bridge
