@@ -1,7 +1,6 @@
 import type {
   MetricsTree, Insight, HierarchyTree, TrendPoint, Filters, Defect, TestCase, EmailDraft,
-  AdoConnection, AdoTestConnectionResult, AdoSyncSummary, AreaPathMapping, AreaPathMappingRule,
-  AreaPathPreviewRow,
+  AdoConnection, AdoTestConnectionResult, AdoSyncSummary, AdoPreviewResult,
 } from "./types";
 
 export const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5001";
@@ -161,40 +160,14 @@ export function syncAdo(signal?: AbortSignal): Promise<{ fetched: number } & Ado
   return request(`/api/ado/sync`, { method: "POST", signal });
 }
 
-export function discoverAdoPaths(signal?: AbortSignal): Promise<{ fetched: number; new_paths: number; total_paths: number }> {
-  return request(`/api/ado/discover-paths`, { method: "POST", signal });
-}
-
-export function fetchAreaPaths(): Promise<{ area_paths: AreaPathMapping[]; needs_review_count: number }> {
-  return request(`/api/ado/area-paths`);
-}
-
-export function overrideAreaPath(
-  id: string, platform: string | null, module: string | null, sub_module: string | null,
-): Promise<AreaPathMapping> {
-  return request(`/api/ado/area-paths/${id}`, {
-    method: "PUT",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ platform, module, sub_module }),
-  });
-}
-
-export function fetchMappingRule(): Promise<AreaPathMappingRule> {
-  return request(`/api/ado/mapping-rule`);
-}
-
-export function updateMappingRule(rule: AreaPathMappingRule): Promise<AreaPathMappingRule & { recomputed_paths: number }> {
-  return request(`/api/ado/mapping-rule`, {
-    method: "PUT",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(rule),
-  });
-}
-
-export function previewMappingRule(rule: AreaPathMappingRule): Promise<{ preview: AreaPathPreviewRow[] }> {
-  return request(`/api/ado/area-paths/preview`, {
+/** Runs a WIQL query (not necessarily the saved one) against the saved connection
+ * and shows how it would parse — no Defect writes. Requires a connection already
+ * be saved, since it reuses those credentials. */
+export function previewAdoWiql(wiql_query: string, signal?: AbortSignal): Promise<AdoPreviewResult> {
+  return request(`/api/ado/preview-wiql`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(rule),
+    body: JSON.stringify({ wiql_query }),
+    signal,
   });
 }

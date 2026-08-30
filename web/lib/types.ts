@@ -128,8 +128,7 @@ export interface AdoSyncSummary {
   updated: number;
   reopened: number;
   total: number;
-  unmapped_count: number;
-  new_area_paths: number;
+  by_platform: Record<string, number>;
 }
 
 export interface AdoConnection {
@@ -149,28 +148,17 @@ export interface AdoTestConnectionResult {
   project_id?: string;
 }
 
-export interface AreaPathMapping {
-  id: string;
-  area_path: string;
-  platform: string | null;
-  module: string | null;
-  sub_module: string | null;
-  is_override: boolean;
-  needs_review: boolean;
-  last_seen_at: string | null;
+export interface AdoPreviewRow {
+  external_id: string;
+  title: string;
+  severity: string;
+  state: string;
+  platform: string;
+  module: string;
+  sub_module: string;
 }
 
-export interface AreaPathMappingRule {
-  drop_root_segments: number;
-  platform_segments: number;
-  module_segments: number;
-}
-
-export interface AreaPathPreviewRow {
-  area_path: string;
-  platform: string | null;
-  module: string | null;
-  sub_module: string | null;
-  overridden: boolean;
-  needs_review: boolean;
+export interface AdoPreviewResult {
+  count: number;
+  sample: AdoPreviewRow[];
 }

@@ -4,5 +4,5 @@
 // source of truth the backend depends on.
 export const DEFAULT_ADO_WIQL =
   "SELECT [System.Id] FROM WorkItems " +
-  "WHERE [System.WorkItemType] = 'Bug' AND [System.TeamProject] = @project " +
-  "ORDER BY [System.ChangedDate] DESC";
+  "WHERE [System.WorkItemType] = 'Bug' AND [System.State] <> 'Closed' " +
+  "ORDER BY [System.CreatedDate] DESC";
