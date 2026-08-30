@@ -33,11 +33,11 @@ export default function OwnersPage() {
   useEffect(() => {
     if (!filters.owner) { setDefects([]); return; }
     setLoading(true);
-    fetchDefects({ owner: filters.owner, severity: filters.severity, state: filters.state })
+    fetchDefects({ owner: filters.owner, severity: filters.severity })
       .then((r) => setDefects(r.defects))
       .catch(() => setDefects([]))
       .finally(() => setLoading(false));
-  }, [filters.owner, filters.severity, filters.state]);
+  }, [filters.owner, filters.severity]);
 
   const summary = useMemo(() => {
     const open = defects.filter((d) => !["Closed", "Deferred", "Rejected"].includes(d.state));

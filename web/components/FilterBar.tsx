@@ -29,7 +29,7 @@ function Select({
   );
 }
 
-export default function FilterBar({ showPhase = false }: { showPhase?: boolean }) {
+export default function FilterBar() {
   const { filters, setFilter, clearFilters } = useFilters();
   const [hierarchy, setHierarchy] = useState<HierarchyTree>({ platforms: [] });
   const [owners, setOwners] = useState<string[]>([]);
@@ -56,9 +56,7 @@ export default function FilterBar({ showPhase = false }: { showPhase?: boolean }
               options={subModules} />
       <Select label="Severity" value={filters.severity} onChange={(v) => setFilter("severity", v)}
               options={SEVERITIES} />
-      {showPhase && (
-        <Select label="Phase" value={filters.phase} onChange={(v) => setFilter("phase", v)} options={PHASES} />
-      )}
+      <Select label="Phase" value={filters.phase} onChange={(v) => setFilter("phase", v)} options={PHASES} />
       <Select label="Owner" value={filters.owner} onChange={(v) => setFilter("owner", v)} options={owners} />
       {hasActiveFilters && (
         <button
