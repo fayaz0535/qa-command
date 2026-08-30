@@ -51,36 +51,39 @@ export function fetchTests(filters: Filters): Promise<{ tests: TestCase[]; count
 }
 
 export async function uploadFile(
-  file: File, recordType: "defects" | "tests", columnMap?: Record<string, string>,
+  file: File, recordType: "defects" | "tests", columnMap?: Record<string, string>, signal?: AbortSignal,
 ): Promise<any> {
   const form = new FormData();
   form.append("file", file);
   form.append("record_type", recordType);
   if (columnMap) form.append("column_map", JSON.stringify(columnMap));
-  return request(`/api/upload`, { method: "POST", body: form });
+  return request(`/api/upload`, { method: "POST", body: form, signal });
 }
 
 export function completeMapping(
-  filePath: string, recordType: "defects" | "tests", columnMap: Record<string, string>,
+  filePath: string, recordType: "defects" | "tests", columnMap: Record<string, string>, signal?: AbortSignal,
 ): Promise<any> {
   return request(`/api/upload/complete-mapping`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ file_path: filePath, record_type: recordType, column_map: columnMap }),
+    signal,
   });
 }
 
-export function draftEmail(): Promise<EmailDraft> {
-  return request(`/api/email/draft`, { method: "POST" });
+export function draftEmail(signal?: AbortSignal): Promise<EmailDraft> {
+  return request(`/api/email/draft`, { method: "POST", signal });
 }
 
 export async function downloadEml(
   subject: string, html: string, recipients: string[], cc: string[], attachments: Record<string, string>,
+  signal?: AbortSignal,
 ): Promise<Blob> {
   const res = await fetch(`${API_URL}/api/email/eml`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ subject, html, recipients, cc, attachments }),
+    signal,
   });
   if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
   return res.blob();
@@ -106,4 +109,18 @@ export function exportUrl(
   kind: "defects" | "tests", format: "xlsx" | "pdf" | "csv", filters: Filters,
 ): string {
   return `${API_URL}/api/export/${kind}${qs({ format, ...(filters as Record<string, string | undefined>) })}`;
+}
+
+/** Fetches an export as a Blob (rather than a plain <a href> navigation) so the
+ * caller can show loading/timeout/error state instead of the browser silently
+ * navigating away to a raw error response if the export fails. */
+export async function fetchExportBlob(
+  kind: "defects" | "tests", format: "xlsx" | "pdf" | "csv", filters: Filters, signal?: AbortSignal,
+): Promise<Blob> {
+  const res = await fetch(exportUrl(kind, format, filters), { signal });
+  if (!res.ok) {
+    const text = await res.text().catch(() => "");
+    throw new Error(`${res.status} ${res.statusText}: ${text}`);
+  }
+  return res.blob();
 }

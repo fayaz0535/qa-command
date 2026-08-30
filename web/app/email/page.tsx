@@ -1,13 +1,26 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Sparkles, Download, Copy, CheckCircle2, Loader2 } from "lucide-react";
 import { draftEmail, downloadEml, getSendConfig, updateSendConfig } from "@/lib/api";
+import { createAbortTimeout, describeError } from "@/lib/timedAction";
+import StagedProgress from "@/components/StagedProgress";
+import ErrorState from "@/components/ErrorState";
 import type { EmailDraft } from "@/lib/types";
+
+const DRAFT_STAGES = [
+  "Gathering metrics…",
+  "Writing insights with AI…",
+  "Building the email & attachments…",
+  "Done",
+];
+const DRAFT_TIMEOUT_MS = 45000;
 
 export default function EmailPage() {
   const [draft, setDraft] = useState<EmailDraft | null>(null);
   const [loading, setLoading] = useState(false);
+  const [stageIndex, setStageIndex] = useState(0);
+  const [genError, setGenError] = useState<string | null>(null);
   const [keyMessage, setKeyMessage] = useState("");
   const [ask, setAsk] = useState("");
   const [html, setHtml] = useState("");
@@ -15,6 +28,9 @@ export default function EmailPage() {
   const [cc, setCc] = useState("");
   const [reviewed, setReviewed] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [emlLoading, setEmlLoading] = useState(false);
+  const [emlError, setEmlError] = useState<string | null>(null);
+  const timersRef = useRef<ReturnType<typeof setTimeout>[]>([]);
 
   useEffect(() => {
     getSendConfig().then((cfg) => {
@@ -23,16 +39,39 @@ export default function EmailPage() {
     }).catch(() => {});
   }, []);
 
+  useEffect(() => () => timersRef.current.forEach(clearTimeout), []);
+
   const generate = async () => {
+    timersRef.current.forEach(clearTimeout);
+    timersRef.current = [];
+
     setLoading(true);
+    setGenError(null);
     setReviewed(false);
+    setStageIndex(0);
+
+    // The backend does metrics -> Claude (the slow ~3-8s step) -> HTML/attachments in
+    // one request, so we drive the visible stages on a timer. These only ever advance
+    // to the last "working" stage on their own — the real response is what moves us to
+    // "Done", so a slow AI call just means we sit on stage 1 longer, never a lie.
+    timersRef.current.push(setTimeout(() => setStageIndex(1), 900));
+    timersRef.current.push(setTimeout(() => setStageIndex(2), 7000));
+
+    const { signal, clear } = createAbortTimeout(DRAFT_TIMEOUT_MS);
     try {
-      const d = await draftEmail();
+      const d = await draftEmail(signal);
+      timersRef.current.forEach(clearTimeout);
+      setStageIndex(3);
       setDraft(d);
       setKeyMessage(d.key_message);
       setAsk(d.ask);
       setHtml(d.html);
+      await new Promise((r) => setTimeout(r, 400)); // let "Done" register before the view swaps
+    } catch (e) {
+      timersRef.current.forEach(clearTimeout);
+      setGenError(describeError(e, "This is taking longer than expected — retry?"));
     } finally {
+      clear();
       setLoading(false);
     }
   };
@@ -56,15 +95,27 @@ export default function EmailPage() {
 
   const handleDownloadEml = async () => {
     if (!draft) return;
-    const blob = await downloadEml(draft.subject, html, parseEmails(recipients), parseEmails(cc), draft.attachments);
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = "qa-command-daily-report.eml";
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
-    URL.revokeObjectURL(url);
+    setEmlLoading(true);
+    setEmlError(null);
+    const { signal, clear } = createAbortTimeout(DRAFT_TIMEOUT_MS);
+    try {
+      const blob = await downloadEml(
+        draft.subject, html, parseEmails(recipients), parseEmails(cc), draft.attachments, signal,
+      );
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "qa-command-daily-report.eml";
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+    } catch (e) {
+      setEmlError(describeError(e, "Download timed out — try again"));
+    } finally {
+      clear();
+      setEmlLoading(false);
+    }
   };
 
   const handleCopyHtml = async () => {
@@ -87,14 +138,20 @@ export default function EmailPage() {
           onClick={generate}
           disabled={loading}
           className="flex items-center gap-2 bg-qc-primary text-white text-sm font-medium px-4 py-2 rounded-md
-                     hover:bg-qc-primary-hover disabled:opacity-50"
+                     hover:bg-qc-primary-hover disabled:opacity-50 min-w-[200px] justify-center"
         >
-          {loading ? <Loader2 size={14} className="animate-spin" /> : <Sparkles size={14} />}
-          Generate today's draft
+          {loading ? <Loader2 size={14} className="animate-spin shrink-0" /> : <Sparkles size={14} className="shrink-0" />}
+          {loading ? DRAFT_STAGES[stageIndex] : "Generate today's draft"}
         </button>
       </div>
 
-      {!draft ? (
+      {loading ? (
+        <div className="bg-white border border-black/[0.08] rounded-xl p-8">
+          <StagedProgress stages={DRAFT_STAGES} currentIndex={stageIndex} />
+        </div>
+      ) : genError ? (
+        <ErrorState message={genError} onRetry={generate} />
+      ) : !draft ? (
         <div className="bg-white border border-black/[0.08] rounded-xl p-10 text-center text-sm text-gray-400">
           No draft yet — click "Generate today's draft" above.
         </div>
@@ -145,10 +202,12 @@ export default function EmailPage() {
             <div className="flex flex-wrap items-center gap-2">
               <button
                 onClick={handleDownloadEml}
+                disabled={emlLoading}
                 className="flex items-center gap-1.5 text-sm border border-black/10 rounded-md px-3 py-1.5
-                           bg-white text-gray-700 hover:bg-gray-50"
+                           bg-white text-gray-700 hover:bg-gray-50 disabled:opacity-50"
               >
-                <Download size={14} /> Download .eml
+                {emlLoading ? <Loader2 size={14} className="animate-spin" /> : <Download size={14} />}
+                {emlLoading ? "Building .eml…" : "Download .eml"}
               </button>
               <button
                 onClick={handleCopyHtml}
@@ -168,6 +227,13 @@ export default function EmailPage() {
                 <CheckCircle2 size={14} /> {reviewed ? "Reviewed by DM → ready to share" : "Mark reviewed"}
               </button>
             </div>
+
+            {emlError && (
+              <div className="flex items-center gap-2 text-xs text-red-500">
+                {emlError}
+                <button onClick={handleDownloadEml} className="underline font-medium">Retry</button>
+              </div>
+            )}
 
             <div className="text-xs text-gray-400">
               Attachments: {Object.keys(draft.attachments).join(", ")}

@@ -1,8 +1,11 @@
 "use client";
 
 import { useRef, useState } from "react";
-import { UploadCloud, FileSpreadsheet, CheckCircle2, AlertTriangle } from "lucide-react";
+import { UploadCloud, FileSpreadsheet, CheckCircle2, AlertTriangle, Loader2 } from "lucide-react";
 import { uploadFile, completeMapping } from "@/lib/api";
+import { createAbortTimeout, describeError } from "@/lib/timedAction";
+
+const UPLOAD_TIMEOUT_MS = 45000;
 
 type RecordType = "defects" | "tests";
 
@@ -47,8 +50,9 @@ export default function UploadDropzone() {
     if (!file) return;
     setUploading(true);
     setError(null);
+    const { signal, clear } = createAbortTimeout(UPLOAD_TIMEOUT_MS);
     try {
-      const res = await uploadFile(file, recordType);
+      const res = await uploadFile(file, recordType, undefined, signal);
       if (res.status === "mapping_required") {
         setMapping(res);
         setMappingChoices(
@@ -57,9 +61,10 @@ export default function UploadDropzone() {
       } else {
         setResult(res);
       }
-    } catch (e: any) {
-      setError(e.message || "Upload failed");
+    } catch (e) {
+      setError(describeError(e, "This is taking longer than expected — retry?"));
     } finally {
+      clear();
       setUploading(false);
     }
   };
@@ -68,16 +73,18 @@ export default function UploadDropzone() {
     if (!mapping) return;
     setUploading(true);
     setError(null);
+    const { signal, clear } = createAbortTimeout(UPLOAD_TIMEOUT_MS);
     try {
       const columnMap = Object.fromEntries(
         Object.entries(mappingChoices).filter(([, v]) => v)
       );
-      const res = await completeMapping(mapping.filePath, mapping.recordType, columnMap);
+      const res = await completeMapping(mapping.filePath, mapping.recordType, columnMap, signal);
       setResult(res);
       setMapping(null);
-    } catch (e: any) {
-      setError(e.message || "Mapping failed");
+    } catch (e) {
+      setError(describeError(e, "This is taking longer than expected — retry?"));
     } finally {
+      clear();
       setUploading(false);
     }
   };
@@ -134,8 +141,9 @@ export default function UploadDropzone() {
           <button
             onClick={handleCompleteMapping}
             disabled={uploading}
-            className="bg-qc-primary text-white text-sm font-medium px-4 py-2 rounded-md hover:bg-qc-primary-hover disabled:opacity-50"
+            className="flex items-center gap-1.5 bg-qc-primary text-white text-sm font-medium px-4 py-2 rounded-md hover:bg-qc-primary-hover disabled:opacity-50"
           >
+            {uploading && <Loader2 size={14} className="animate-spin" />}
             {uploading ? "Ingesting…" : "Confirm mapping & ingest"}
           </button>
           <button onClick={reset} className="text-sm text-gray-500 px-4 py-2">Cancel</button>
@@ -194,14 +202,20 @@ export default function UploadDropzone() {
         )}
       </div>
 
-      {error && <div className="text-sm text-red-500">{error}</div>}
+      {error && (
+        <div className="flex items-center gap-2 text-sm text-red-500">
+          {error}
+          <button onClick={handleUpload} className="underline font-medium shrink-0">Retry</button>
+        </div>
+      )}
 
       <button
         onClick={handleUpload}
         disabled={!file || uploading}
-        className="bg-qc-primary text-white text-sm font-medium px-4 py-2 rounded-md hover:bg-qc-primary-hover disabled:opacity-50"
+        className="flex items-center gap-1.5 bg-qc-primary text-white text-sm font-medium px-4 py-2 rounded-md hover:bg-qc-primary-hover disabled:opacity-50"
       >
-        {uploading ? "Uploading…" : `Upload ${recordType}`}
+        {uploading && <Loader2 size={14} className="animate-spin" />}
+        {uploading ? "Uploading & processing…" : `Upload ${recordType}`}
       </button>
     </div>
   );
