@@ -122,3 +122,55 @@ export interface EmailDraft {
   generated_at: string;
   reviewed_by_dm: boolean;
 }
+
+export interface AdoSyncSummary {
+  created: number;
+  updated: number;
+  reopened: number;
+  total: number;
+  unmapped_count: number;
+  new_area_paths: number;
+}
+
+export interface AdoConnection {
+  connected: boolean;
+  org_url?: string;
+  project?: string;
+  pat_masked?: string;
+  wiql_query?: string;
+  last_synced_at?: string | null;
+  last_sync_summary?: AdoSyncSummary | null;
+}
+
+export interface AdoTestConnectionResult {
+  ok: boolean;
+  error?: string;
+  project_name?: string;
+  project_id?: string;
+}
+
+export interface AreaPathMapping {
+  id: string;
+  area_path: string;
+  platform: string | null;
+  module: string | null;
+  sub_module: string | null;
+  is_override: boolean;
+  needs_review: boolean;
+  last_seen_at: string | null;
+}
+
+export interface AreaPathMappingRule {
+  drop_root_segments: number;
+  platform_segments: number;
+  module_segments: number;
+}
+
+export interface AreaPathPreviewRow {
+  area_path: string;
+  platform: string | null;
+  module: string | null;
+  sub_module: string | null;
+  overridden: boolean;
+  needs_review: boolean;
+}
